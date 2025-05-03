@@ -1,0 +1,81 @@
+#define S1 25
+#define S2 32
+#define S3 33
+#define S4 26
+#define S5 35  // Changed to avoid conflict
+
+#define IN1 13
+#define IN2 12
+#define IN3 27
+#define IN4 14
+
+int sensors[5];
+float error = 0;
+float lastError = 0;
+float integral = 0;
+
+int baseSpeed = 150;
+
+float Kp = 25;
+float Ki = 0;
+float Kd = 15;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(S1, INPUT);
+  pinMode(S2, INPUT);
+  pinMode(S3, INPUT);
+  pinMode(S4, INPUT);
+  pinMode(S5, INPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+}
+
+void loop() {
+  readSensors();
+  error = calculateError();
+
+  float P = error;
+  integral += error;
+  float I = integral;
+  float D = error - lastError;
+  float correction = Kp * P + Ki * I + Kd * D;
+
+  int leftSpeed = baseSpeed - correction;
+  int rightSpeed = baseSpeed + correction;
+
+  leftSpeed = constrain(leftSpeed, 0, 255);
+  rightSpeed = constrain(rightSpeed, 0, 255);
+
+  analogWrite(IN1, leftSpeed);
+  analogWrite(IN2, 0);
+  analogWrite(IN3, rightSpeed);
+  analogWrite(IN4, 0);
+
+  lastError = error;
+  delay(10);
+}
+
+void readSensors() {
+  sensors[0] = digitalRead(S1);
+  sensors[1] = digitalRead(S2);
+  sensors[2] = digitalRead(S3);
+  sensors[3] = digitalRead(S4);
+  sensors[4] = digitalRead(S5);
+}
+
+int calculateError() {
+  int weights[5] = {-2, -1, 0, 1, 2};
+  int total = 0;
+  int count = 0;
+  for (int i = 0; i < 5; i++) {
+    if (sensors[i] == 1) {
+      total += weights[i];
+      count++;
+    }
+  }
+  if (count == 0) return 0;
+  return total / count;
+}
